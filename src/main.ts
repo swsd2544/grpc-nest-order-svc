@@ -1,3 +1,4 @@
+import { PrismaService } from './order/prisma.service';
 import { HttpExceptionFilter } from './order/filter/http-exception.filter';
 import { protobufPackage } from './order/proto/order.pb';
 import { Transport } from '@nestjs/microservices';
@@ -15,6 +16,9 @@ async function bootstrap() {
       protoPath: join('node_modules/grpc-nest-proto/proto/order.proto'),
     },
   });
+
+  const prismaService: PrismaService = app.get(PrismaService);
+  await prismaService.enableShutdownHooks(app);
 
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));

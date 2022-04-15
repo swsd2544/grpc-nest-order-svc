@@ -1,5 +1,5 @@
+import { PrismaService } from './prisma.service';
 import { CreateOrderRequestDto } from './order.dto';
-import { Order } from './order.entity';
 import {
   ProductServiceClient,
   PRODUCT_SERVICE_NAME,
@@ -8,8 +8,6 @@ import {
 } from './proto/product.pb';
 import { HttpStatus, Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { ClientGrpc } from '@nestjs/microservices';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
 import { CreateOrderResponse } from './proto/order.pb';
 import { firstValueFrom } from 'rxjs';
 
@@ -17,11 +15,10 @@ import { firstValueFrom } from 'rxjs';
 export class OrderService implements OnModuleInit {
   private productSvc: ProductServiceClient;
 
-  @Inject(PRODUCT_SERVICE_NAME)
-  private readonly client: ClientGrpc;
-
-  @InjectRepository(Order)
-  private readonly repository: Repository<Order>;
+  constructor(
+    @Inject(PRODUCT_SERVICE_NAME) private readonly client: ClientGrpc,
+    private readonly prisma: PrismaService,
+  ) {}
 
   public onModuleInit(): void {
     this.productSvc =
@@ -45,13 +42,13 @@ export class OrderService implements OnModuleInit {
       };
     }
 
-    const order: Order = new Order();
-
-    order.price = product.data.price;
-    order.productId = product.data.id;
-    order.userId = data.userId;
-
-    await this.repository.save(order);
+    const order = await this.prisma.order.create({
+      data: {
+        price: product.data.price,
+        productId: product.data.id,
+        userId: data.userId,
+      },
+    });
 
     const decreaseStockData: DecreaseStockResponse = await firstValueFrom(
       this.productSvc.decreaseStock({ id: data.productId, orderId: order.id }),
@@ -59,7 +56,7 @@ export class OrderService implements OnModuleInit {
 
     if (decreaseStockData.status === HttpStatus.CONFLICT) {
       // deleting order if decreaseStock fails
-      await this.repository.delete(order);
+      await this.prisma.order.delete({ where: { id: order.id } });
 
       return {
         id: null,

@@ -1,7 +1,6 @@
+import { PrismaService } from './prisma.service';
 import { PRODUCT_PACKAGE_NAME, PRODUCT_SERVICE_NAME } from './proto/product.pb';
-import { Order } from './order.entity';
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
 import { ClientsModule, Transport } from '@nestjs/microservices';
@@ -19,9 +18,8 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         },
       },
     ]),
-    TypeOrmModule.forFeature([Order]),
   ],
   controllers: [OrderController],
-  providers: [OrderService],
+  providers: [OrderService, PrismaService],
 })
 export class OrderModule {}
